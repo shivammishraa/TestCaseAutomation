@@ -3,16 +3,25 @@ import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import HistoryTable from "../components/HistoryTable";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Download, Send } from "lucide-react";
+import { Loader2, Download, Send, X } from "lucide-react";
+
+interface HistoryItem {
+  id: number;
+  ticketId: string;
+  summary: string;
+  generatedAt: string;
+  downloadUrl: string;
+  testCases: any[];
+}
 
 export default function Dashboard() {
   const [jiraTicketKey, setJiraTicketKey] = useState("");
   const [useReasoning, setUseReasoning] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-
-  const user = { name: "Shivam M", designation: "Developer" };
+  const [viewData, setViewData] = useState<any[] | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleGenerate = async () => {
     if (!jiraTicketKey) return;
@@ -26,30 +35,35 @@ export default function Dashboard() {
         body: JSON.stringify({ jiraTicketKey, useReasoning }),
       });
 
-      if (!response.ok) throw new Error("Network response was not ok");
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error);
 
-      // 1. Convert the response to a Blob (Binary Large Object)
-      const blob = await response.blob();
-
-      // 2. Create a temporary URL for the blob
+      // Convert Base64 from BFF back to a Blob URL for downloading
+      const byteCharacters = atob(result.excelFile);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
+      
+       // Add to history state immediately (at the top)
+      const newEntry = {
+        id: Date.now(),
+        ticketId: result.ticketId,
+        summary: result.summary,
+        generatedAt: new Date().toISOString(),
+        downloadUrl: url,
+        testCases: result.testCases 
+      };
 
-      // 3. Set this URL to your "Success" state so the download button can use it
-      setDownloadUrl(url);
+      setHistory((prev) => [newEntry, ...prev]);
       setStatus("success");
-
-      // Optional: Trigger download automatically
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `SIT_${jiraTicketKey}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      fetchHistory();
+      // fetchHistory(); // Still call this if you want to sync with DB
     } catch (error) {
-      console.error("BFF Error:", error);
       setStatus("idle");
-      alert("Generation failed. Please try again.");
+      alert("Generation failed.");
     }
   };
 
@@ -58,9 +72,7 @@ export default function Dashboard() {
       const res = await fetch("http://localhost:5000/api/history");
       const data = await res.json();
       setHistory(data);
-    } catch (err) {
-      console.error("Failed to fetch history:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   useEffect(() => {
@@ -72,7 +84,6 @@ export default function Dashboard() {
       <Navbar />
 
       <main className="max-w-6xl mx-auto pt-20 px-6 pb-12">
-        {/* Top Section: Jira Input */}
         <section className="flex flex-col items-center justify-center py-16 bg-white rounded-3xl shadow-sm border border-slate-100 mb-12">
           <h2 className="text-2xl font-bold text-slate-800 mb-2">
             Generate SIT Test Cases
@@ -88,7 +99,7 @@ export default function Dashboard() {
               placeholder="e.g., VO-20249"
               value={jiraTicketKey}
               onChange={(e) => setJiraTicketKey(e.target.value)}
-              disabled={status === "loading"}
+              disabled={status === "loading" || status === "success"}
               className="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-lg font-medium shadow-sm"
             />
 
@@ -110,19 +121,20 @@ export default function Dashboard() {
               <a
                 href={downloadUrl}
                 download={`SIT_${jiraTicketKey}.xlsx`}
-                className="w-full p-4 rounded-xl font-bold flex items-center justify-center gap-2 bg-green-600 text-white hover:bg-green-700 transition-all shadow-lg"
+                className="w-full p-4 rounded-xl font-bold flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg"
               >
                 <Download size={20} /> Download Test File (Excel)
               </a>
             ) : (
-              <button
-                onClick={handleGenerate}
-                disabled={!jiraTicketKey || status === "loading"}
-                className={`w-full p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${status === "loading"
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-100"
-                  }`}
-              >
+               <button
+              onClick={status === "idle" ? handleGenerate : undefined}
+              disabled={!jiraTicketKey || status === "loading"}
+              className={`w-full p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                status === "loading" ? "bg-slate-100 text-slate-400" : 
+                status === "success" ? "bg-green-100 text-green-700 border border-green-200 cursor-default" : 
+                "bg-blue-600 text-white hover:bg-blue-700 shadow-lg"
+              }`}
+            >
                 <AnimatePresence mode="wait">
                   {status === "idle" ? (
                     <motion.span key="idle" className="flex items-center gap-2">
@@ -133,6 +145,7 @@ export default function Dashboard() {
                       key="loading"
                       className="flex items-center gap-2"
                     >
+                      
                       <Loader2 className="animate-spin" size={20} />{" "}
                       Processing...
                     </motion.span>
@@ -157,16 +170,49 @@ export default function Dashboard() {
         {/* Lower Section: History Table */}
         <section>
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-slate-800 text-left">
-              Recent Submissions (Last 30 Days)
-            </h3>
-            <span className="text-xs font-medium bg-slate-200 px-3 py-1 rounded-full text-slate-600">
-              {history.length} Tickets
-            </span>
+            <h3 className="text-xl font-bold text-slate-800">Recent Submissions</h3>
           </div>
-          {/* <HistoryTable data={history} /> */}
+          <HistoryTable data={history} onView={(data) => { setViewData(data); setIsModalOpen(true); }} />
         </section>
       </main>
+
+      {/* --- PREVIEW MODAL --- */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-5xl max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+                <h3 className="text-xl font-bold text-slate-800">Data Preview</h3>
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={24} /></button>
+              </div>
+              <div className="p-6 overflow-auto bg-white">
+                <table className="w-full border-collapse border border-slate-200 text-sm">
+                  <thead className="bg-slate-100 sticky top-0">
+                    <tr>
+                      <th className="border border-slate-300 p-2 text-left">ID</th>
+                      <th className="border border-slate-300 p-2 text-left">Test</th>
+                      <th className="border border-slate-300 p-2 text-left">Expected Result</th>
+                      <th className="border border-slate-300 p-2 text-left">Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {viewData?.map((row, i) => (
+                      <tr key={i} className="hover:bg-slate-50">
+                        <td className="border border-slate-200 p-2 font-mono">{row.TestCaseId || row.testCaseId}</td>
+                        <td className="border border-slate-200 p-2">{row.Test || row.description}</td>
+                        <td className="border border-slate-200 p-2">{row.Expected_Result}</td>
+                        <td className="border border-slate-200 p-2">{row.type || 'Positive'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

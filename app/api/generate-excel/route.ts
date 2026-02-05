@@ -19,6 +19,11 @@ export async function POST(req: NextRequest) {
 
     const testCasesArray = response.data?.data?.testCases;
 
+    const backendSummary =
+      response.data?.message ||
+      response.data?.summary ||
+      `SIT Test Cases for ${jiraTicketKey}`;
+
     // Validation: Ensure we have an array to prevent the .forEach crash
     if (!testCasesArray || !Array.isArray(testCasesArray)) {
       console.error(
@@ -58,15 +63,15 @@ export async function POST(req: NextRequest) {
     });
 
     // 5. Populate Data from JSON
-      testCasesArray.forEach((item, index) => {
+    testCasesArray.forEach((item, index) => {
       worksheet.addRow({
-        srNo: index + 1, 
+        srNo: index + 1,
         testCaseId: item.TestCaseId || item.testCaseId || `TC-0${index + 1}`,
-        test: item.Test || item.description || '',
-        expectedResult: item.Expected_Result || '',
-        actualResult: '', 
-        status: '',       
-        type: item.type || 'Positive',
+        test: item.Test || item.description || "",
+        expectedResult: item.Expected_Result || "",
+        actualResult: "",
+        status: "",
+        type: item.type || "Positive",
       });
     });
 
@@ -85,19 +90,24 @@ export async function POST(req: NextRequest) {
       });
     });
 
-    // 7. Generate Buffer and Return File
-    const buffer = await workbook.xlsx.writeBuffer();
+    const excelBuffer = await workbook.xlsx.writeBuffer();
 
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        'Content-Disposition': `attachment; filename="SIT_${jiraTicketKey}.xlsx"`,
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      },
+    const base64Excel = Buffer.from(excelBuffer as ArrayBuffer).toString(
+      "base64",
+    );
+
+    return NextResponse.json({
+      success: true,
+      ticketId: jiraTicketKey,
+      summary: backendSummary,
+      testCases: testCasesArray,
+      excelFile: base64Excel,
     });
-
-  } catch (error) {
-    console.error('BFF Error:', error);
-    return NextResponse.json({ error: 'Internal server error in BFF' }, { status: 500 });
+  } catch (error: any) {
+    console.error("BFF Error:", error.message);
+    return NextResponse.json(
+      { error: "Failed to process request" },
+      { status: 500 },
+    );
   }
 }

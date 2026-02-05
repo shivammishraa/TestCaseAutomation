@@ -12,7 +12,7 @@ export default function LandingPage() {
         </div>
         
         <h1 className="text-6xl font-black italic tracking-tighter text-slate-900 mb-6">
-          SIT<span className="text-blue-600">.AI</span>
+          TEST CASE Generator<span className="text-blue-600">.AI</span>
         </h1>
         
         <p className="text-xl text-slate-600 mb-10 leading-relaxed">

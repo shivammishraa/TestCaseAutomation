@@ -35,7 +35,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="text-xl font-black italic text-slate-800 tracking-tighter">SIT<span className="text-blue-600">.AI</span></div>
+      <div className="text-xl font-black italic text-slate-800 tracking-tighter">Test Case Generator<span className="text-blue-600">.AI</span></div>
 
       {/* Right Section: Logout */}
       <button onClick={logout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-semibold">
