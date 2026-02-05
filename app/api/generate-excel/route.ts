@@ -4,42 +4,19 @@ import axios from "axios";
 
 export async function POST(req: NextRequest) {
   try {
-    const { jiraTicketKey, useReasoning = false } = await req.json();
-    console.log("Received Jira Ticket Key:", jiraTicketKey);
-    console.log("Use Reasoning:", useReasoning);
+    const { jiraTicketKey } = await req.json();
 
-    // 1. Forward to the external DeepSeek Backend (provided by your colleague)
-    const backendUrl = "http://localhost:5000/api/generate-testcases";
-    const response = await axios.post(backendUrl, {
-      jiraTicketKey,
-      useReasoning,
-    });
+    // 1. Fetch the JSON generated earlier by the backend
+    // Assuming backend stores it and has a GET endpoint
+    const backendResponse = await axios.get(`http://localhost:5000/api/get-testcases/${jiraTicketKey}`);
+    const testCasesArray = backendResponse.data?.data?.testCases;
 
-    console.log("Response from DeepSeek Backend:", response.data);
+    if (!testCasesArray) throw new Error("No data found");
 
-    const testCasesArray = response.data?.data?.testCases;
-
-    const backendSummary =
-      response.data?.message ||
-      response.data?.summary ||
-      `SIT Test Cases for ${jiraTicketKey}`;
-
-    // Validation: Ensure we have an array to prevent the .forEach crash
-    if (!testCasesArray || !Array.isArray(testCasesArray)) {
-      console.error(
-        "Data error: Expected an array in response.data.data.testCases",
-      );
-      return NextResponse.json(
-        { error: "Backend did not return a valid test case array" },
-        { status: 500 },
-      );
-    }
-
-    // 2. Initialize Excel Workbook
+    // 2. Excel Generation Logic
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("SIT Test Cases");
 
-    // 3. Define Predefined Headers
     worksheet.columns = [
       { header: "Sr.No", key: "srNo", width: 8 },
       { header: "Testcase_ID", key: "testCaseId", width: 15 },
@@ -50,64 +27,34 @@ export async function POST(req: NextRequest) {
       { header: "Type", key: "type", width: 12 },
     ];
 
-    // 4. Professional Styling (Blue Header)
+    // Styling ... 
     const headerRow = worksheet.getRow(1);
     headerRow.eachCell((cell) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF2563EB" },
-      };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } };
       cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
-    // 5. Populate Data from JSON
-    testCasesArray.forEach((item, index) => {
+    testCasesArray.forEach((item: any, index: number) => {
       worksheet.addRow({
         srNo: index + 1,
         testCaseId: item.TestCaseId || item.testCaseId || `TC-0${index + 1}`,
         test: item.Test || item.description || "",
         expectedResult: item.Expected_Result || "",
-        actualResult: "",
-        status: "",
+        actualResult: "", status: "",
         type: item.type || "Positive",
       });
     });
 
-    // 6. Add Borders and Text Wrapping
-    worksheet.eachRow((row, rowNumber) => {
-      row.eachCell((cell) => {
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-        if (rowNumber > 1) {
-          cell.alignment = { wrapText: true, vertical: "top" };
-        }
-      });
-    });
+    const buffer = await workbook.xlsx.writeBuffer();
 
-    const excelBuffer = await workbook.xlsx.writeBuffer();
-
-    const base64Excel = Buffer.from(excelBuffer as ArrayBuffer).toString(
-      "base64",
-    );
-
-    return NextResponse.json({
-      success: true,
-      ticketId: jiraTicketKey,
-      summary: backendSummary,
-      testCases: testCasesArray,
-      excelFile: base64Excel,
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="SIT_${jiraTicketKey}.xlsx"`
+      },
     });
   } catch (error: any) {
-    console.error("BFF Error:", error.message);
-    return NextResponse.json(
-      { error: "Failed to process request" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
