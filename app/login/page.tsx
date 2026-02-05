@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100 w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-black italic text-blue-600 mb-2">SIT.AI</h1>
+          <h1 className="text-3xl font-black italic text-blue-600 mb-2">Test Case Generator</h1>
           <p className="text-slate-500 font-medium">Enter details to access the POC</p>
         </div>
 

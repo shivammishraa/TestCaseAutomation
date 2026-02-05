@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SIT.AI | AI Manual Test Case Generator",
+  title: " Test Case Generator| AI Manual Test Case Generator",
   description: "Automate SIT manual test cases using AI and Jira tickets",
 };
 
