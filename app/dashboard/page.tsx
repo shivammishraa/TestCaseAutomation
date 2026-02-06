@@ -5,11 +5,18 @@ import HistoryTable from "../components/HistoryTable";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Send, CheckCircle } from "lucide-react";
 
+interface HistoryItem {
+  _id: string;
+  jiraTicketKey: string;
+  status: string;
+  createdAt: string;
+}
+
 export default function Dashboard() {
   const [jiraTicketKey, setJiraTicketKey] = useState("");
   const [useReasoning, setUseReasoning] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showPopup, setShowPopup] = useState(false);
 
   // 1. Initial Load and dependency on 'status' to refresh history
@@ -17,9 +24,19 @@ export default function Dashboard() {
     try {
       const res = await fetch("http://localhost:5000/api/history");
       const data = await res.json();
-      setHistory(data);
+      if (data.success && data.data && Array.isArray(data.data.history)) {
+        setHistory(data.data.history);
+      } else if (data && Array.isArray(data.history)) {
+        setHistory(data.history);
+      } else if (data && Array.isArray(data.data)) {
+        setHistory(data.data);
+      } else {
+        console.error("API did not return an array:", data);
+        setHistory([]); // Fallback to empty array
+      }
     } catch (err) {
       console.error("Failed to fetch history:", err);
+      setHistory([]);
     }
   };
 

@@ -6,12 +6,26 @@ export async function POST(req: NextRequest) {
   try {
     const { jiraTicketKey } = await req.json();
 
+    if (!jiraTicketKey) {
+      return NextResponse.json({ error: "No Ticket ID provided" }, { status: 400 });
+    }
+
     // 1. Fetch the JSON generated earlier by the backend
     // Assuming backend stores it and has a GET endpoint
-    const backendResponse = await axios.get(`http://localhost:5000/api/get-testcases/${jiraTicketKey}`);
-    const testCasesArray = backendResponse.data?.data?.testCases;
+    console.log(`Fetching test cases for ticket: ${jiraTicketKey}`);
+    const backendResponse = await axios.get(`http://localhost:5000/api/testcases/${jiraTicketKey}`);
+    console.log("Backend Response:", backendResponse.data);
 
-    if (!testCasesArray) throw new Error("No data found");
+    // Handle response structure: data is an array, get the first item
+    const responseData = backendResponse.data?.data || backendResponse.data;
+    const testCaseRecord = Array.isArray(responseData) ? responseData[0] : responseData;
+    const testCasesArray = testCaseRecord?.testCases;
+
+    console.log("Extracted test cases:", testCasesArray);
+
+    if (!testCasesArray || !Array.isArray(testCasesArray)) {
+      throw new Error(`No test cases found for ${jiraTicketKey}`);
+    }
 
     // 2. Excel Generation Logic
     const workbook = new ExcelJS.Workbook();
@@ -33,6 +47,10 @@ export async function POST(req: NextRequest) {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } };
       cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
     });
+    testCasesArray.forEach((item: any, index: number) => {
+      console.log(`Processing test case ${index + 1}:`, item);
+    }
+    );
 
     testCasesArray.forEach((item: any, index: number) => {
       worksheet.addRow({
@@ -55,6 +73,10 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Excel Generation Error:", error.response?.data || error.message);
+    return NextResponse.json(
+      { error: "Failed to generate Excel", details: error.message },
+      { status: 500 }
+    );
   }
 }
