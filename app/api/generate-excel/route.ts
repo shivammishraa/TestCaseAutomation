@@ -4,16 +4,16 @@ import axios from "axios";
 
 export async function POST(req: NextRequest) {
    try {
-    const { id, jiraTicketKey } = await req.json();
+    const { generationId, jiraTicketKey } = await req.json();
 
-    if (!id) {
+    if (!generationId) {
       return NextResponse.json({ error: "No Object ID provided" }, { status: 400 });
     }
 
     // 1. Fetch the JSON generated earlier by the backend
     // Assuming backend stores it and has a GET endpoint
     console.log(`Fetching test cases for ticket: ${jiraTicketKey}`);
-    const backendResponse = await axios.get(`http://localhost:5000/api/testcases/${id}`);
+    const backendResponse = await axios.get(`http://localhost:5000/api/testcases/${generationId}`);
     console.log("Backend Response:", backendResponse.data);
 
     // Handle response structure: data is an array, get the first item

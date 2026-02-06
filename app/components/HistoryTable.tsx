@@ -10,7 +10,7 @@ interface HistoryItem {
 
 interface HistoryTableProps {
   data: any[];
-  onDownload: (id: string, ticketKey: string) => void; 
+  onDownload: (generationId: string, ticketKey: string) => void; 
 }
 
 export default function HistoryTable({ data, onDownload }: HistoryTableProps) {
@@ -32,7 +32,7 @@ export default function HistoryTable({ data, onDownload }: HistoryTableProps) {
             <tr><td colSpan={4} className="p-12 text-center text-slate-400">No history found.</td></tr>
           ) : (
             safeData.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+              <tr key={item.generationId} className="hover:bg-slate-50/50 transition-colors">
                 <td className="p-4">
                   <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded text-sm">
                     {item.jiraTicketKey}
@@ -59,7 +59,7 @@ export default function HistoryTable({ data, onDownload }: HistoryTableProps) {
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2 px-4">
                     <button
-                      onClick={() => onDownload(item._id, item.jiraTicketKey)}
+                      onClick={() => onDownload(item.generationId, item.jiraTicketKey)}
                       // Only allow download if status is success
                       disabled={item.status !== "success"}
                       className={`inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-all border ${item.status === "success"
