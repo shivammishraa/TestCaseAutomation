@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import HistoryTable from "../components/HistoryTable";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Send, CheckCircle } from "lucide-react";
+import { log } from "console";
 
 interface HistoryItem {
   _id: string;
@@ -76,12 +77,12 @@ export default function Dashboard() {
   };
 
   // 3. Download Logic: Triggered ONLY by the History Table button
-  const handleDownloadExcel = async (ticketId: string) => {
+  const handleDownloadExcel = async (id:string,ticketId: string) => {
     try {
       const response = await fetch("/api/generate-excel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jiraTicketKey: ticketId }),
+        body: JSON.stringify({id, jiraTicketKey: ticketId }),
       });
 
       if (!response.ok) throw new Error("Excel Generation failed");

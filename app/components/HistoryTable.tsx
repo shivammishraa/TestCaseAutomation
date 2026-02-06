@@ -10,7 +10,7 @@ interface HistoryItem {
 
 interface HistoryTableProps {
   data: any[];
-  onDownload: (ticketId: string) => void;
+  onDownload: (id: string, ticketKey: string) => void; 
 }
 
 export default function HistoryTable({ data, onDownload }: HistoryTableProps) {
@@ -59,7 +59,7 @@ export default function HistoryTable({ data, onDownload }: HistoryTableProps) {
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2 px-4">
                     <button
-                      onClick={() => onDownload(item.jiraTicketKey)}
+                      onClick={() => onDownload(item._id, item.jiraTicketKey)}
                       // Only allow download if status is success
                       disabled={item.status !== "success"}
                       className={`inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-all border ${item.status === "success"

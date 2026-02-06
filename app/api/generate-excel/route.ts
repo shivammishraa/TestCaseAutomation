@@ -3,17 +3,17 @@ import ExcelJS from "exceljs";
 import axios from "axios";
 
 export async function POST(req: NextRequest) {
-  try {
-    const { jiraTicketKey } = await req.json();
+   try {
+    const { id, jiraTicketKey } = await req.json();
 
-    if (!jiraTicketKey) {
-      return NextResponse.json({ error: "No Ticket ID provided" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "No Object ID provided" }, { status: 400 });
     }
 
     // 1. Fetch the JSON generated earlier by the backend
     // Assuming backend stores it and has a GET endpoint
     console.log(`Fetching test cases for ticket: ${jiraTicketKey}`);
-    const backendResponse = await axios.get(`http://localhost:5000/api/testcases/${jiraTicketKey}`);
+    const backendResponse = await axios.get(`http://localhost:5000/api/testcases/${id}`);
     console.log("Backend Response:", backendResponse.data);
 
     // Handle response structure: data is an array, get the first item
